@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Fargate bactch task
+
+Parameters:
+  DockerImageArn:
+    Type: String
+
+  SecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+
+Resources:
+  # ECSクラスターの定義
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: fargate-batch
+
+  # ECSタスクへの実行ロールを定義
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: user-ecsTaskExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'ecs-tasks.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+        - arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess
+
+  # ECSタスク定義
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: cfn-fargate-batch
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '512'
+      Memory: '1024'
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: batch
+          Image: !Ref DockerImageArn
+          LogConfiguration:
+              LogDriver: awslogs
+              Options:
+                awslogs-group: /ecs/cfn-fargate-batch
+                awslogs-region: ap-northeast-1
+                awslogs-stream-prefix: ecs
+
+  # ECSのスケジュール定義
+  TaskScheduleEvents:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: fargate-batch-event
+      ScheduleExpression: 'cron(0 1 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: fargate-batch-event-1
+          RoleArn: !GetAtt ECSTaskExecutionRole.Arn
+          EcsParameters:
+            TaskDefinitionArn: !Ref ECSTaskDefinition
+            LaunchType: FARGATE
+            NetworkConfiguration:
+              AwsVpcConfiguration:
+                AssignPublicIp: ENABLED
+                SecurityGroups: !Ref SecurityGroupIds
+                Subnets: !Ref SubnetIds
+            TaskCount: 1
+          Arn: !GetAtt ECSCluster.Arn
