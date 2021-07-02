@@ -5,6 +5,10 @@ Parameters:
   DockerImageArn:
     Type: String
 
+  ScheduleExpression:
+    Type: String
+    Default: cron(0 1 * * ? *)
+
   SecurityGroupIds:
     Type: List<AWS::EC2::SecurityGroup::Id>
 
@@ -58,15 +62,17 @@ Resources:
                 awslogs-region: ap-northeast-1
                 awslogs-stream-prefix: ecs
 
+  # ECSスケジュール実行のロールを定義
+
   # ECSのスケジュール定義
   TaskScheduleEvents:
     Type: AWS::Events::Rule
     Properties:
       Name: fargate-batch-event
-      ScheduleExpression: 'cron(0 1 * * ? *)'
+      ScheduleExpression: !Ref ScheduleExpression
       State: ENABLED
       Targets:
-        - Id: fargate-batch-event-1
+        - Id: fargate-batch-event
           RoleArn: !GetAtt ECSTaskExecutionRole.Arn
           EcsParameters:
             TaskDefinitionArn: !Ref ECSTaskDefinition

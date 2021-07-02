@@ -1,0 +1,409 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create 1-VPC, 4-Subnet (2-Public, 2-Private) and 2-NAT-GW
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Project Name prefix"
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VPCCIDR
+          - SubnetAAZ
+          - SubnetBAZ
+          - EnableNatGateway
+          - PublicSubnetACIDR
+          - PublicSubnetBCIDR
+          - PrivateSubnetACIDR
+          - PrivateSubnetBCIDR
+    ParameterLabels:
+      VPCCIDR:
+        default: "VPC CIDER"
+      SubnetAAZ:
+        default: "Public and Private SubnetA AZ"
+      SubnetBAZ:
+        default: "Public and Private SubnetC AZ"
+      EnableNatGateway:
+        default: "Enable Nat Gateway"
+      PublicSubnetACIDR:
+        default: "PublicSubnetA CIDR"
+      PublicSubnetBCIDR:
+        default: "PublicSubnetB CIDR"
+      PrivateSubnetACIDR:
+        default: "PrivateSubnetA CIDR"
+      PrivateSubnetBCIDR:
+        default: "PrivateSubnetB CIDR"
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+
+  VPCCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  SubnetAAZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  SubnetBAZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  EnableNatGateway:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
+
+  PublicSubnetACIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  PublicSubnetBCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  PrivateSubnetACIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  PrivateSubnetBCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+Conditions:
+  EnableNatGateway: !Equals [ true, !Ref EnableNatGateway  ]
+
+Resources:
+# ---------------------------------------------- #
+#  VPC
+# ---------------------------------------------- #
+  # Create VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: vpc
+
+  # Create Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-vpc
+
+  # Attach IGW
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+# ---------------------------------------------- #
+#  Subnet
+# ---------------------------------------------- #
+# Create Public SubnetA
+  PubSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref SubnetAAZ
+      CidrBlock: !Ref PublicSubnetACIDR
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pub-subnet-a
+
+# Create Public SubnetB
+  PubSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref SubnetBAZ
+      CidrBlock: !Ref PublicSubnetBCIDR
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pub-subnet-b
+
+# Create Private SubnetA
+  PriSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref SubnetAAZ
+      CidrBlock: !Ref PrivateSubnetACIDR
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pri-subnet-a
+
+# Create Private SubnetB
+  PriSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref SubnetBAZ
+      CidrBlock: !Ref PrivateSubnetBCIDR
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pri-subnet-b
+
+# ------------------------------------------------------------#
+# NAT Gateway
+# ------------------------------------------------------------#
+# Create EIP A
+  NatGatewayEIPA:
+    Type: AWS::EC2::EIP
+    Condition: EnableNatGateway
+    Properties:
+      Domain: !Ref VPC
+
+# Create EIP B
+  NatGatewayEIPB:
+    Type: AWS::EC2::EIP
+    Condition: EnableNatGateway
+    Properties:
+      Domain: !Ref VPC
+
+# Create Nat Gateway to PubSubnetA
+  NatGatewayA:
+    Type: AWS::EC2::NatGateway
+    Condition: EnableNatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIPA.AllocationId
+      SubnetId: !Ref PubSubnetA
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-ngw-a
+
+# Create Nat Gateway to PubSubnetB
+  NatGatewayB:
+    Type: AWS::EC2::NatGateway
+    Condition: EnableNatGateway
+    Properties:
+      AllocationId: !GetAtt NatGatewayEIPB.AllocationId
+      SubnetId: !Ref PubSubnetB
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-ngw-b
+
+# ------------------------------------------------------------#
+#  RouteTable
+# ------------------------------------------------------------#
+# Create Public RouteTableA
+  PubRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-public-route-a
+
+# Create Public RouteTableB
+  PubRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-public-route-b
+
+# Create Private RouteTableA
+  PriRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-private-route-a
+
+# Create Private RouteTableB
+  PriRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-private-route-b
+
+# ------------------------------------------------------------#
+# Routing
+# ------------------------------------------------------------#
+# Create PublicRouteA
+  PubRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubRouteTableA
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+# Create PublicRouteB
+  PubRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubRouteTableB
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+
+# Create PriRouteA (for NAT-GW)
+  PriRouteA:
+    Type: AWS::EC2::Route
+    Condition: EnableNatGateway
+    Properties:
+      RouteTableId: !Ref PriRouteTableA
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref NatGatewayA
+
+# Create PriRouteB (for NAT-GW)
+  PriRouteB:
+    Type: AWS::EC2::Route
+    Condition: EnableNatGateway
+    Properties:
+      RouteTableId: !Ref PriRouteTableB
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref NatGatewayB
+
+# ------------------------------------------------------------#
+# RouteTable Asscociation
+# ------------------------------------------------------------#
+# Associate PubRouteTable SubnetA
+  PubSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetA
+      RouteTableId: !Ref PubRouteTableA
+
+# Associate PubRouteTable SubnetB
+  PubSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetB
+      RouteTableId: !Ref PubRouteTableB
+
+# Associate PriRouteTable SubnetA
+  PriSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PriSubnetA
+      RouteTableId: !Ref PriRouteTableA
+
+# Associate PriRouteTable SubnetB
+  PriSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PriSubnetB
+      RouteTableId: !Ref PriRouteTableB
+
+Outputs:
+# VPC
+  expVPC:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc
+
+  expVPCCIDR:
+    Value: !Ref VPCCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-cidr
+
+# Default Security Group
+  expDefaultSecurityGroup:
+    Value: !GetAtt VPC.DefaultSecurityGroup
+    Export:
+      Name: !Sub ${ProjectPrefix}-default-sg
+
+# Subnet
+  expPubSubnetA:
+    Value: !Ref PubSubnetA
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-subnet-a
+
+  expPubSubnetACIDR:
+    Value: !Ref PubSubnetACIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-subnet-a-cidr
+
+  expPubSubnetB:
+    Value: !Ref PubSubnetB
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-subnet-b
+
+  expPubSubnetBCIDR:
+    Value: !Ref PubSubnetBCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-subnet-b-cidr
+
+  expPriSubnetA:
+    Value: !Ref PriSubnetA
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-subnet-a
+
+  exportPriSubnetACIDR:
+    Value: !Ref PriSubnetACIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-subnet-a-cidr
+
+  expPriSubnetB:
+    Value: !Ref PriSubnetB
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-subnet-b
+
+  expPriSubnetBCIDR:
+    Value: !Ref PriSubnetBCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-subnet-b-cidr
+
+# Route
+  expPubRouteTableA:
+    Value: !Ref PubRouteTableA
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-route-a
+
+  expPubRouteTableB:
+    Value: !Ref PubRouteTableB
+    Export:
+      Name: !Sub ${ProjectPrefix}-pub-route-b
+
+  expPriRouteTableA:
+    Value: !Ref PriRouteTableA
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-route-a
+
+  expPriRouteTableB:
+    Value: !Ref PriRouteTableB
+    Export:
+      Name: !Sub ${ProjectPrefix}-pri-route-b
+
+# NAT-GW
+  expNatGatewayA:
+    Condition: EnableNatGateway
+    Value: !Ref NatGatewayA
+    Export:
+      Name: !Sub ${ProjectPrefix}-natgw-a
+
+  expNatGatewayAEIP:
+    Condition: EnableNatGateway
+    Value: !Ref NatGatewayAEIP
+    Export:
+      Name: !Sub ${ProjectPrefix}-natgw-a-eip
+
+  expNatGatewayB:
+    Condition: EnableNatGateway
+    Value: !Ref NatGatewayB
+    Export:
+      Name: !Sub ${ProjectPrefix}-natgw-b
+
+  expNatGatewayBEIP:
+    Condition: EnableNatGateway
+    Value: !Ref NatGatewayBEIP
+    Export:
+      Name: !Sub ${ProjectPrefix}-natgw-b-eip
