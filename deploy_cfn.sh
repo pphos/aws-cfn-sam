@@ -75,15 +75,15 @@ function extract_override_parameters() {
 #   $4          : スクリプト実行時の引数の数
 #####################################
 function format_aws_cli_cmd() {
-  local stack_name="--stack_name ${1}"
-  local template_file="--template_file ${2}"
+  local stack_name="--stack-name ${1}"
+  local template_file="--template-file ${2}"
   local capabilities="--capabilities ${CAPABILITIES}"
   local parameter_overrides="${3}"
   local changeset_option="--no-execute-changeset"
   local script_args="${4}"
 
   if [ -n "${parameter_overrides}" ]; then
-    parameter_overrides="--parameter_overrides ${parameter_overrides}"
+    parameter_overrides="--parameter-overrides ${parameter_overrides}"
   fi
 
   if [ "${script_args}" -eq 2 ]; then
