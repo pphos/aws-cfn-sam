@@ -1,0 +1,24 @@
+[
+  {
+    "stack_name": "single-az-vpc",
+    "template_file": "./service/vpc/vpc/vpc.yml",
+    "parameters": [
+      {
+        "key": "ProjectPrefix",
+        "value": "phos"
+      },
+      {
+        "key": "VPCCIDR",
+        "value": "10.0.0.0/16"
+      },
+      {
+        "key": "SubnetAAZ",
+        "value": "ap-northeast-1a"
+      },
+      {
+        "key": "PublicSubnetACIDR",
+        "value": "10.0.1.0/24"
+      }
+    ]
+  }
+]

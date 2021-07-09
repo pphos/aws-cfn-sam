@@ -10,12 +10,15 @@ Metadata:
           default: "Network Configuration"
         Parameters:
           - VPCCIDR
+          - PublicSubnetACIDR
           - SubnetAAZ
     ParameterLabels:
       VPCCIDR:
         default: "VPC CIDER"
       SubnetAAZ:
-        default: "Public and Private SubnetA AZ"
+        default: "Public SubnetA AZ"
+      PublicSubnetACIDR:
+        default: "PublicSubnetA CIDR"
 
 Parameters:
   ProjectPrefix:
@@ -27,6 +30,10 @@ Parameters:
 
   SubnetAAZ:
     Type: AWS::EC2::AvailabilityZone::Name
+
+  PublicSubnetACIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
 
 Resources:
 # ---------------------------------------------- #
@@ -132,6 +139,6 @@ Outputs:
       Name: !Sub ${ProjectPrefix}-pub-subnet-a
 
   expPubSubnetACIDR:
-    Value: !Ref PubSubnetACIDR
+    Value: !Ref PublicSubnetACIDR
     Export:
       Name: !Sub ${ProjectPrefix}-pub-subnet-a-cidr
