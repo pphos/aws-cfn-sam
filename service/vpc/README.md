@@ -9,4 +9,4 @@
 | Private Subnet  | 2 |
 | NAT Gateway     | 2 |
 
-![Multi AZ VPC with NAT-GW](./images/vpc-with-multi-az-natgw-and-private-subnet.png)
+![Multi AZ VPC with NAT-GW](./vpc-with-multi-az-natgw-and-private-subnet/architecture.png)
