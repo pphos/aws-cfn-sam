@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create 2-VPC, 2-Subnet (2-Public) with Peering Connection
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Project Name prefix"
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VPCACIDR
+          - VPCBCIDR
+          - VPCAPubSubnetCIDR
+          - VPCBPubSubnetCIDR
+          - VPCASubnetAZ
+          - VPCBSubnetAZ
+    ParameterLabels:
+      VPCACIDR:
+        default: "VPCA CIDR"
+      VPCBCIDR:
+        default: "VPCB CIDR"
+      VPCAPubSubnetCIDR:
+        default: "VPCA Public Subnet CIDR"
+      VPCBPubSubnetCIDR:
+        default: "VPCB Public Subnet CIDR"
+      VPCASubnetAZ:
+        default: "VPCA Availability Zone"
+      VPCBSubnetAZ:
+        default: "VPCB Availability Zone"
+
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+
+  VPCACIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  VPCBCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  VPCAPubSubnetCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  VPCBPubSubnetCIDR:
+    Type: String
+    AllowedPattern: '((\d{1,3})\.){3}\d{1,3}/\d{1,2}'
+
+  VPCASubnetAZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+
+  VPCBSubnetAZ:
+    Type: AWS::EC2::AvailabilityZone::Name
+
+Resources:
+# ---------------------------------------------- #
+#  VPC
+# ---------------------------------------------- #
+  # Create VPC
+  VPCA:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCACIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-vpc-a
+
+  VPCB:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCBCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-vpc-b
+
+  # Create Internet Gateway
+  InternetGatewayA:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-igw-a
+
+  InternetGatewayB:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-igw-b
+
+  # Attach IGW
+  InternetGatewayAttachmentA:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGatewayA
+      VpcId: !Ref VPCA
+
+  InternetGatewayAttachmentB:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGatewayB
+      VpcId: !Ref VPCB
+
+# ---------------------------------------------- #
+# VPC Peering
+# ---------------------------------------------- #
+  VPCPeeringConnection:
+    Type: AWS::EC2::VPCPeeringConnection
+    Properties:
+      VpcId: !Ref VPCA
+      PeerVpcId: !Ref VPCB
+
+# ---------------------------------------------- #
+#  Subnet
+# ---------------------------------------------- #
+# Create Public Subnet
+  PubSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref VPCASubnetAZ
+      CidrBlock: !Ref VPCAPubSubnetCIDR
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPCA
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pub-subnet-a
+
+  PubSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Ref VPCBSubnetAZ
+      CidrBlock: !Ref VPCBPubSubnetCIDR
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPCB
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-pub-subnet-b
+
+# ------------------------------------------------------------#
+#  RouteTable
+# ------------------------------------------------------------#
+# Create Public RouteTable
+  PubRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCA
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-public-route-a
+
+  PubRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCB
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectPrefix}-public-route-b
+
+# ------------------------------------------------------------#
+# Routing
+# ------------------------------------------------------------#
+# Create PublicRoute
+  PubRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubRouteTableA
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGatewayA
+
+  PubRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubRouteTableB
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGatewayB
+
+# Create Peering Route
+  PeeringRouteA:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: !Ref VPCBCIDR
+      RouteTableId: !Ref PubRouteTableA
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+  PeeringRouteB:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: !Ref VPCACIDR
+      RouteTableId: !Ref PubRouteTableB
+      VpcPeeringConnectionId: !Ref VPCPeeringConnection
+
+# ------------------------------------------------------------#
+# RouteTable Asscociation
+# ------------------------------------------------------------#
+# Associate PubRouteTable Subnet
+  PubSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetA
+      RouteTableId: !Ref PubRouteTableA
+
+  PubSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PubSubnetB
+      RouteTableId: !Ref PubRouteTableB
+
+Outputs:
+# VPC
+  expVPCA:
+    Value: !Ref VPCA
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a
+
+  expVPCB:
+    Value: !Ref VPCB
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b
+
+  expVPCACIDR:
+    Value: !Ref VPCACIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a-cidr
+
+  expVPCBCIDR:
+    Value: !Ref VPCBCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b-cidr
+
+# Default Security Group
+  expDefaultSecurityGroupA:
+    Value: !GetAtt VPCA.DefaultSecurityGroup
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a-default-sg
+
+  expDefaultSecurityGroupB:
+    Value: !GetAtt VPCB.DefaultSecurityGroup
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b-default-sg
+
+# Subnet
+  expPubSubnetA:
+    Value: !Ref PubSubnetA
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a-pub-subnet
+
+  expPubSubnetB:
+    Value: !Ref PubSubnetB
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b-pub-subnet
+
+  expPubSubnetACIDR:
+    Value: !Ref VPCAPubSubnetCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a-pub-subnet-cidr
+
+  expPubSubnetBCIDR:
+    Value: !Ref VPCBPubSubnetCIDR
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b-pub-subnet-cidr

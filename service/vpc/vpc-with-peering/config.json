@@ -1,0 +1,36 @@
+[
+  {
+    "stack_name": "single-az-vpc-with-peering",
+    "template_file": "./service/vpc/vpc-with-peering/template.yml",
+    "parameters": [
+      {
+        "key": "ProjectPrefix",
+        "value": "phos"
+      },
+      {
+        "key": "VPCACIDR",
+        "value": "10.0.0.0/16"
+      },
+      {
+        "key": "VPCASubnetAZ",
+        "value": "ap-northeast-1a"
+      },
+      {
+        "key": "VPCAPubSubnetCIDR",
+        "value": "10.0.1.0/24"
+      },
+      {
+        "key": "VPCBCIDR",
+        "value": "10.1.0.0/16"
+      },
+      {
+        "key": "VPCBSubnetAZ",
+        "value": "ap-northeast-1a"
+      },
+      {
+        "key": "VPCBPubSubnetCIDR",
+        "value": "10.1.1.0/24"
+      }
+    ]
+  }
+]
