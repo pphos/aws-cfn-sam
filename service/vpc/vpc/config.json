@@ -1,7 +1,7 @@
 [
   {
     "stack_name": "single-az-vpc",
-    "template_file": "./service/vpc/vpc/vpc.yml",
+    "template_file": "./service/vpc/vpc/template.yml",
     "parameters": [
       {
         "key": "ProjectPrefix",
