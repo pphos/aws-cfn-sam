@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Ansible Association for EC2
+
+Parameters:
+  EC2InstanceId:
+    Type: AWS::EC2::Instance::Id
+    Description: Specify the Instance id for association
+
+  AssociationName:
+    Type: String
+    Description: Specify the association name.
+
+  SSMAssociateLogBucket:
+    Type: String
+    Description: Specify S3 bucket name to store ssm association log
+
+  SourceS3BucketName:
+    Type: String
+    Description: Specify S3 bucket name where the source object is stored.
+
+  SourceS3ObjectName:
+    Type: String
+    Description: Specify source S3 object name.
+
+  PlaybookPath:
+    Type: String
+    Description: The Playbook file to run (including relative path). If the main Playbook file is located in the ./automation directory, then specify automation/playbook.yml.
+    Default: playbook.yml
+
+Resources:
+  #
+  # Ansible Asociation
+  #
+  EC2AnsibleAssociation:
+    Type: AWS::SSM::Association
+    Properties:
+      Name: AWS-ApplyAnsiblePlaybooks
+      AssociationName: !Ref AssociationName
+      WaitForSuccessTimeoutSeconds: 120
+      Targets:
+        - Key: InstanceIds
+          Values: [ !Ref EC2InstanceId ]
+      OutputLocation:
+        S3Location:
+          OutputS3BucketName: !Ref SSMAssociateLogBucket
+          OutputS3KeyPrefix: 'logs/'
+      Parameters:
+        SourceType:
+          - 'S3'
+        SourceInfo:
+          - !Sub |
+              {
+                "path": "https://s3.amazonaws.com/${SourceS3BucketName}/${SourceS3ObjectName}"
+              }
+        # Installing Ansible and its dependencies
+        InstallDependencies:
+          - 'True'
+        # Playbook file want to run
+        PlaybookFile:
+          - !Sub '${PlaybookPath}'
+        ExtraVariables:
+          - 'SSM=True'
+        Check:
+          - 'False'
+        Verbose:
+          - '-v'
