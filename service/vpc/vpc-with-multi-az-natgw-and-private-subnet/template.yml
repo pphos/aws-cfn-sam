@@ -328,7 +328,7 @@ Outputs:
       Name: !Sub ${ProjectPrefix}-pub-subnet-a
 
   expPubSubnetACIDR:
-    Value: !Ref PubSubnetACIDR
+    Value: !Ref PublicSubnetACIDR
     Export:
       Name: !Sub ${ProjectPrefix}-pub-subnet-a-cidr
 
@@ -338,7 +338,7 @@ Outputs:
       Name: !Sub ${ProjectPrefix}-pub-subnet-b
 
   expPubSubnetBCIDR:
-    Value: !Ref PubSubnetBCIDR
+    Value: !Ref PublicSubnetBCIDR
     Export:
       Name: !Sub ${ProjectPrefix}-pub-subnet-b-cidr
 
@@ -348,7 +348,7 @@ Outputs:
       Name: !Sub ${ProjectPrefix}-pri-subnet-a
 
   exportPriSubnetACIDR:
-    Value: !Ref PriSubnetACIDR
+    Value: !Ref PrivateSubnetACIDR
     Export:
       Name: !Sub ${ProjectPrefix}-pri-subnet-a-cidr
 
@@ -358,7 +358,7 @@ Outputs:
       Name: !Sub ${ProjectPrefix}-pri-subnet-b
 
   expPriSubnetBCIDR:
-    Value: !Ref PriSubnetBCIDR
+    Value: !Ref PrivateSubnetBCIDR
     Export:
       Name: !Sub ${ProjectPrefix}-pri-subnet-b-cidr
 
@@ -392,7 +392,7 @@ Outputs:
 
   expNatGatewayAEIP:
     Condition: EnableNatGateway
-    Value: !Ref NatGatewayAEIP
+    Value: !Ref NatGatewayEIPA
     Export:
       Name: !Sub ${ProjectPrefix}-natgw-a-eip
 
@@ -404,6 +404,6 @@ Outputs:
 
   expNatGatewayBEIP:
     Condition: EnableNatGateway
-    Value: !Ref NatGatewayBEIP
+    Value: !Ref NatGatewayEIPB
     Export:
       Name: !Sub ${ProjectPrefix}-natgw-b-eip

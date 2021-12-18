@@ -1,0 +1,44 @@
+[
+  {
+    "stack_name": "muti-az-vpc",
+    "template_file": "./service/vpc/vpc-with-multi-az-natgw-and-private-subnet/template.yml",
+    "parameters": [
+      {
+        "key": "ProjectPrefix",
+        "value": "phos"
+      },
+      {
+        "key": "VPCCIDR",
+        "value": "10.0.0.0/16"
+      },
+      {
+        "key": "SubnetAAZ",
+        "value": "ap-northeast-1a"
+      },
+      {
+        "key": "SubnetBAZ",
+        "value": "ap-northeast-1c"
+      },
+      {
+        "key": "EnableNatGateway",
+        "value": "false"
+      },
+      {
+        "key": "PublicSubnetACIDR",
+        "value": "10.0.10.0/24"
+      },
+      {
+        "key": "PublicSubnetBCIDR",
+        "value": "10.0.11.0/24"
+      },
+      {
+        "key": "PrivateSubnetACIDR",
+        "value": "10.0.20.0/24"
+      },
+      {
+        "key": "PrivateSubnetBCIDR",
+        "value": "10.0.21.0/24"
+      }
+    ]
+  }
+]

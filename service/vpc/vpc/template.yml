@@ -5,8 +5,6 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "Project Name prefix"
-      - Label:
           default: "Network Configuration"
         Parameters:
           - VPCCIDR
@@ -119,26 +117,26 @@ Outputs:
   expVPC:
     Value: !Ref VPC
     Export:
-      Name: !Sub ${ProjectPrefix}-vpc
+      Name: VPC
 
   expVPCCIDR:
     Value: !Ref VPCCIDR
     Export:
-      Name: !Sub ${ProjectPrefix}-vpc-cidr
+      Name: VPCCIDR
 
 # Default Security Group
   expDefaultSecurityGroup:
     Value: !GetAtt VPC.DefaultSecurityGroup
     Export:
-      Name: !Sub ${ProjectPrefix}-default-sg
+      Name: DefaultSg
 
 # Subnet
   expPubSubnetA:
     Value: !Ref PubSubnetA
     Export:
-      Name: !Sub ${ProjectPrefix}-pub-subnet-a
+      Name: PubSubnetA
 
   expPubSubnetACIDR:
     Value: !Ref PublicSubnetACIDR
     Export:
-      Name: !Sub ${ProjectPrefix}-pub-subnet-a-cidr
+      Name: PubSubnetACIDR

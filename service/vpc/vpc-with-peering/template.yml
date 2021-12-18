@@ -237,6 +237,17 @@ Outputs:
     Export:
       Name: !Sub ${ProjectPrefix}-vpc-b-cidr
 
+# Route
+  expPubRouteTableA:
+    Value: !Ref PubRouteTableA
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-a-pub-route
+
+  expPubRouteTableB:
+    Value: !Ref PubRouteTableB
+    Export:
+      Name: !Sub ${ProjectPrefix}-vpc-b-pub-route
+
 # Default Security Group
   expDefaultSecurityGroupA:
     Value: !GetAtt VPCA.DefaultSecurityGroup
